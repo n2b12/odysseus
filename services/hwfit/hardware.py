@@ -470,10 +470,10 @@ def _detect_windows():
     ps_cmd = (
         """
         $r = @{}
-        $os = Get-CimInstance Win32_OperatingSystem
+        $os = Get-CimInstance Win32_OperatingSystem -Property TotalVisibleMemorySize, FreePhysicalMemory
         $r.ram_gb = [math]::Round($os.TotalVisibleMemorySize / 1048576, 1)
         $r.avail_gb = [math]::Round($os.FreePhysicalMemory / 1048576, 1)
-        $cpu = Get-CimInstance Win32_Processor
+        $cpu = Get-CimInstance Win32_Processor -Property NumberOfLogicalProcessors, Name, AddressWidth
         $r.cpu_name = ($cpu.Name | Select-Object -First 1).trim() # Pick first CPU in case of multi-socket system
         $r.cpu_cores = ($cpu | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
         $r.arch = $cpu.AddressWidth
@@ -495,7 +495,8 @@ def _detect_windows():
         }
         catch {}
         if (-not $r.gpu_name) { 
-            $wmiGpu = Get-CimInstance Win32_VideoController | Where-Object { $_.AdapterRAM -gt 0 } | Select-Object -First 1
+            $wmiGpu = Get-CimInstance Win32_VideoController -Property AdapterRAM, PNPDeviceID, Name |
+            Where-Object { $_.AdapterRAM -gt 0 } | Select-Object -First 1
             $GPUDriverKey = "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0*"
             $GPUDeviceID = $wmiGpu.PNPDeviceID.Split('&')[0..1] -join '&'
             $VRAMfromRegistry = Get-ItemProperty -Path $GPUDriverKey |
